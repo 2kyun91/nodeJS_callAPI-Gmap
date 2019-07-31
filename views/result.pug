@@ -1,0 +1,86 @@
+extends layout
+
+block content
+  h1= query + ' 검색 결과(' + results.length + ')'
+  //- 라인 24
+  //- 서버가 pug에 검색 결과를 랜더링하는 부분.
+  //- for문으로 검색 결과 개수만큼 위도와 경도, 장소명, 장소 아이디를 집어넣는다.
+  //- #{} 부분이 서버의 데이터로 치환된다.
+  //- 문자열일 경우에는 따옴표로 감싸주어야 한다.
+
+  //- 라인 33
+  //- ininMap 함수가 호출되면 new google.maps.map(태그, 옵션)으로 지도를 렌더링한다.
+
+  //- 라인 40
+  //- 검색 결과가 있을 시 지도에 마커를 표시한다.
+  //- new google.maps.Marker(옵션)으로 마커를 표시할 수 있다.
+
+  //- 라인 77
+  //- 지도 관련 스크립트를 불러오는 태그이다.
+  //- 쿼리스트링으로 앞에서 발급받은 API 키와 initMap 콜백함수를 지정한다.
+
+  //- 라인 73
+  //- new google.maps.InfoWindow(옵션)이 정보창을 띄우는 코드이다.
+  //- 옵션으로는 content가 있는데 정보창 내용물을 넣어주면 된다.
+  #map
+  script.
+    var positions = [];
+  for result in results
+    script.
+      positions.push({
+        lat: #{result.geometry.location.lat},
+        lng: #{result.geometry.location.lng},
+        name: '#{result.name}',
+        id: '#{result.place_id}'
+      });
+  script.
+    function initMap() {
+      var center = positions[0] || { lat: 37.540705, lng: 126.956764 };
+      var map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 13,
+        center: center
+      });
+
+      positions.forEach(function(pos) {
+        var marker = new google.maps.Marker({
+          position: { lat: pos.lat, lng: pos.lng },
+          map: map,
+          title: pos.name
+        });
+        var div = document.createElement('div');
+        var h1 = document.createElement('h1');
+        var button = document.createElement('button');
+        h1.textContent = pos.name;
+        button.classList.add('btn');
+        button.textContent = '즐겨찾기 추가';
+        button.onclick = function () {
+          var xhr = new XMLHttpRequest();
+          xhr.onload = function () {
+            if (xhr.status === 200) {
+              location.href = '/';
+            }
+          };
+          xhr.open('POST', '/location/' + pos.id + '/favorite');
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.send(JSON.stringify({
+            name: pos.name,
+            lat: pos.lat,
+            lng: pos.lng
+          }));
+        };
+        div.appendChild(h1);
+        div.appendChild(button);
+        var infowindow = new google.maps.InfoWindow({
+          content: div
+        });
+        marker.addListener('click', function () {
+          infowindow.open(map, marker);
+        });
+      });
+    }
+  script(
+    async
+    defer
+    src="https://maps.googleapis.com/maps/api/js"
+      + "?key=AIzaSyDaF4Pzmqg5oVAaC4iMIrZVeyq42bAKHhU&callback=initMap"
+  )
